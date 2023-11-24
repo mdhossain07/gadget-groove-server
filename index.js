@@ -7,7 +7,7 @@ const port = process.env.PORT || 5001;
 app.use(cors());
 app.use(express.json());
 
-const { MongoClient, ServerApiVersion } = require("mongodb");
+const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.esabfel.mongodb.net/?retryWrites=true&w=majority`;
 
 const client = new MongoClient(uri, {
@@ -38,7 +38,32 @@ async function run() {
       res.send(result);
     });
 
-    app.delete("api/v1/product/:id", async (req, res) => {
+    app.get("/api/v1/product/:id", async (req, res) => {
+      const { id } = req.params;
+      const query = { _id: new ObjectId(id) };
+      const product = await productCollection.findOne(query);
+      res.send(product);
+    });
+
+    app.patch("/api/v1/update-product/:id", async (req, res) => {
+      const product = req.body;
+      const { id } = req.params;
+      const filter = { _id: new ObjectId(id) };
+      const updateProduct = {
+        $set: {
+          product_name: product.product_name,
+          product_category: product.product_category,
+          product_image: product.product_image,
+          product_description: product.product_description,
+          product_tags: product.product_tags,
+          external_link: product.external_link,
+        },
+      };
+      const result = await productCollection.updateOne(filter, updateProduct);
+      res.send(result);
+    });
+
+    app.delete("api/v1/delete-product/:id", async (req, res) => {
       const { id } = req.params;
       const query = { email: email };
       const result = await productCollection.deleteOne(query);
