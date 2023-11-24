@@ -24,6 +24,7 @@ async function run() {
 
     const productCollection = client.db("gadgetDB").collection("products");
     const userCollection = client.db("gadgetDB").collection("users");
+    const reviewCollection = client.db("gadgetDB").collection("reviews");
 
     // Products related API
 
@@ -63,9 +64,30 @@ async function run() {
       res.send(result);
     });
 
-    app.delete("api/v1/delete-product/:id", async (req, res) => {
+    app.patch("/api/v1/update-status/:id", async (req, res) => {
       const { id } = req.params;
-      const query = { email: email };
+      const filter = { _id: new ObjectId(id) };
+      const updateStatus = {
+        $set: { status: "accepted" },
+      };
+      const result = await productCollection.updateOne(filter, updateStatus);
+      res.send(result);
+    });
+
+    app.patch("/api/v1/make-featured/:id", async (req, res) => {
+      const { id } = req.params;
+      const filter = { _id: new ObjectId(id) };
+      const updateStatus = {
+        $set: { featured: "yes" },
+      };
+      const result = await productCollection.updateOne(filter, updateStatus);
+      res.send(result);
+    });
+
+    app.delete("/api/v1/delete-product/:id", async (req, res) => {
+      const { id } = req.params;
+      console.log(id);
+      const query = { _id: new ObjectId(id) };
       const result = await productCollection.deleteOne(query);
       res.send(result);
     });
@@ -85,6 +107,47 @@ async function run() {
 
     app.get("/api/v1/users", async (req, res) => {
       const result = await userCollection.find().toArray();
+      res.send(result);
+    });
+
+    // reviews related API
+
+    app.post("/api/v1/add-review", async (req, res) => {
+      const review = req.body;
+      const result = await reviewCollection.insertOne(review);
+      res.send(result);
+    });
+
+    app.get("/api/v1/reviews", async (req, res) => {
+      let query = {};
+      if (req.query.sid) {
+        query = { sid: req.query.sid };
+      }
+      const result = await reviewCollection.find(query).toArray();
+      res.send(result);
+    });
+
+    // vote related API
+
+    app.patch("/api/v1/increase-vote/:id", async (req, res) => {
+      const vote = req.body;
+      const { id } = req.params;
+      const filter = { _id: new ObjectId(id) };
+      const updateVote = {
+        $inc: { vote: 1 },
+      };
+      const result = await productCollection.updateOne(filter, updateVote);
+      res.send(result);
+    });
+
+    app.patch("/api/v1/decrease-vote/:id", async (req, res) => {
+      const vote = req.body;
+      const { id } = req.params;
+      const filter = { _id: new ObjectId(id) };
+      const updateVote = {
+        $inc: { vote: -1 },
+      };
+      const result = await productCollection.updateOne(filter, updateVote);
       res.send(result);
     });
 
