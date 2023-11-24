@@ -23,6 +23,45 @@ async function run() {
     // await client.connect();
 
     const productCollection = client.db("gadgetDB").collection("products");
+    const userCollection = client.db("gadgetDB").collection("users");
+
+    // Products related API
+
+    app.post("/api/v1/add-product", async (req, res) => {
+      const product = req.body;
+      const result = await productCollection.insertOne(product);
+      res.send(result);
+    });
+
+    app.get("/api/v1/products", async (req, res) => {
+      const result = await productCollection.find().toArray();
+      res.send(result);
+    });
+
+    app.delete("api/v1/product/:id", async (req, res) => {
+      const { id } = req.params;
+      const query = { email: email };
+      const result = await productCollection.deleteOne(query);
+      res.send(result);
+    });
+
+    // users related API
+
+    app.post("/api/v1/add-user", async (req, res) => {
+      const user = req.body;
+      const query = { email: user.email };
+      const isExist = await userCollection.findOne(query);
+      if (isExist) {
+        return res.send({ message: "user already exist" });
+      }
+      const result = await userCollection.insertOne(user);
+      res.send(result);
+    });
+
+    app.get("/api/v1/users", async (req, res) => {
+      const result = await userCollection.find().toArray();
+      res.send(result);
+    });
 
     await client.db("admin").command({ ping: 1 });
     console.log(
