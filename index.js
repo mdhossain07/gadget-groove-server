@@ -25,6 +25,7 @@ async function run() {
     const productCollection = client.db("gadgetDB").collection("products");
     const userCollection = client.db("gadgetDB").collection("users");
     const reviewCollection = client.db("gadgetDB").collection("reviews");
+    const reportCollection = client.db("gadgetDB").collection("reports");
 
     // Products related API
 
@@ -36,16 +37,6 @@ async function run() {
 
     app.get("/api/v1/products", async (req, res) => {
       const result = await productCollection.find().toArray();
-      res.send(result);
-    });
-
-    app.get("/api/v1/featured-products", async (req, res) => {
-      let query = {};
-      if (req.query.featured) {
-        query = { featured: req.query.featured };
-        console.log(query);
-      }
-      const result = await productCollection.find(query).toArray();
       res.send(result);
     });
 
@@ -74,6 +65,16 @@ async function run() {
       res.send(result);
     });
 
+    app.delete("/api/v1/delete-product/:id", async (req, res) => {
+      const { id } = req.params;
+      console.log(id);
+      const query = { _id: new ObjectId(id) };
+      const result = await productCollection.deleteOne(query);
+      res.send(result);
+    });
+
+    // products query related API
+
     app.patch("/api/v1/update-status/:id", async (req, res) => {
       const { id } = req.params;
       const filter = { _id: new ObjectId(id) };
@@ -94,13 +95,44 @@ async function run() {
       res.send(result);
     });
 
-    app.delete("/api/v1/delete-product/:id", async (req, res) => {
-      const { id } = req.params;
-      console.log(id);
-      const query = { _id: new ObjectId(id) };
-      const result = await productCollection.deleteOne(query);
+    app.get("/api/v1/featured-products", async (req, res) => {
+      let query = {};
+      if (req.query.featured) {
+        query = { featured: req.query.featured };
+      }
+      const result = await productCollection
+        .find(query)
+        .sort({ timestamp: -1 })
+        .toArray();
       res.send(result);
     });
+
+    app.get("/api/v1/trending-products", async (req, res) => {
+      const result = await productCollection
+        .find()
+        .sort({ vote: -1 })
+        .toArray();
+      res.send(result);
+    });
+
+    app.get("/api/v1/accepted-products", async (req, res) => {
+      let query = {};
+      if (req.query.status) {
+        query = { status: req.query.status };
+      }
+      const result = await productCollection.find(query).toArray();
+      res.send(result);
+    });
+
+    // app.get("/api/v1/search-products", async (req, res) => {
+    //   const { name } = req.query;
+    //   const query = {
+    //     product_name: { $regex: new RegExp(name, "i") },
+    //   };
+    //   console.log(query);
+    //   const result = await productCollection.find(query).toArray();
+    //   res.send(result);
+    // });
 
     // users related API
 
@@ -161,10 +193,30 @@ async function run() {
       res.send(result);
     });
 
-    await client.db("admin").command({ ping: 1 });
-    console.log(
-      "Pinged your deployment. You successfully connected to MongoDB!"
-    );
+    // reports related API
+
+    app.post("/api/v1/make-report", async (req, res) => {
+      const report = req.body;
+      const result = await reportCollection.insertOne(report);
+      res.send(result);
+    });
+
+    app.get("/api/v1/reports", async (req, res) => {
+      const result = await reportCollection.find().toArray();
+      res.send(result);
+    });
+
+    app.delete("/api/v1/delete-report/:id", async (req, res) => {
+      const { id } = req.params;
+      const query = { _id: new ObjectId(id) };
+      const result = await reportCollection.deleteOne(query);
+      res.send(result);
+    });
+
+    // await client.db("admin").command({ ping: 1 });
+    // console.log(
+    //   "Pinged your deployment. You successfully connected to MongoDB!"
+    // );
   } finally {
     // await client.close();
   }
