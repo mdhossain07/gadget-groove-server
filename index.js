@@ -39,6 +39,16 @@ async function run() {
       res.send(result);
     });
 
+    app.get("/api/v1/featured-products", async (req, res) => {
+      let query = {};
+      if (req.query.featured) {
+        query = { featured: req.query.featured };
+        console.log(query);
+      }
+      const result = await productCollection.find(query).toArray();
+      res.send(result);
+    });
+
     app.get("/api/v1/product/:id", async (req, res) => {
       const { id } = req.params;
       const query = { _id: new ObjectId(id) };
