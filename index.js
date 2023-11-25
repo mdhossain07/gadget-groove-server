@@ -124,15 +124,15 @@ async function run() {
       res.send(result);
     });
 
-    // app.get("/api/v1/search-products", async (req, res) => {
-    //   const { name } = req.query;
-    //   const query = {
-    //     product_name: { $regex: new RegExp(name, "i") },
-    //   };
-    //   console.log(query);
-    //   const result = await productCollection.find(query).toArray();
-    //   res.send(result);
-    // });
+    app.get("/api/v1/search-products", async (req, res) => {
+      const { tags } = req.query;
+      const query = {
+        product_tags: { $in: tags.split(",") },
+      };
+      console.log(query);
+      const result = await productCollection.find(query).toArray();
+      res.send(result);
+    });
 
     // users related API
 
@@ -150,6 +150,58 @@ async function run() {
     app.get("/api/v1/users", async (req, res) => {
       const result = await userCollection.find().toArray();
       res.send(result);
+    });
+
+    app.patch("/api/v1/make-admin/:id", async (req, res) => {
+      const { id } = req.params;
+      const user = req.body;
+      const filter = { _id: new ObjectId(id) };
+      const upadteUser = {
+        $set: {
+          role: "admin",
+        },
+      };
+      const result = await userCollection.updateOne(filter, upadteUser);
+      res.send(result);
+    });
+
+    app.patch("/api/v1/make-moderator/:id", async (req, res) => {
+      const { id } = req.params;
+      const user = req.body;
+      const filter = { _id: new ObjectId(id) };
+      const upadteUser = {
+        $set: {
+          role: "moderator",
+        },
+      };
+      const result = await userCollection.updateOne(filter, upadteUser);
+      res.send(result);
+    });
+
+    // admin API
+
+    app.get("/api/v1/user/admin/:email", async (req, res) => {
+      const { email } = req.params;
+      const query = { email: email };
+      const user = await userCollection.findOne(query);
+      let admin = false;
+      if (user) {
+        admin = user?.role === "admin";
+      }
+      res.send(admin);
+    });
+
+    // moderator API
+
+    app.get("/api/v1/user/moderator/:email", async (req, res) => {
+      const { email } = req.params;
+      const query = { email: email };
+      const user = await userCollection.findOne(query);
+      let moderator = false;
+      if (user) {
+        moderator = user?.role === "moderator";
+      }
+      res.send(moderator);
     });
 
     // reviews related API
