@@ -29,12 +29,58 @@ async function run() {
     const reportCollection = client.db("gadgetDB").collection("reports");
     const voteCollection = client.db("gadgetDB").collection("votes");
 
+    // jwt related API
+
+    app.post("/jwt", (req, res) => {
+      const user = req.body;
+      const token = jwt.sign(user, process.env.SECRET_TOKEN, {
+        expiresIn: "1h",
+      });
+      res.send({ token });
+    });
+
+    // middleware
+
+    const verifyToken = (req, res, next) => {
+      if (!req.headers.authorization) {
+        return res.status(401).send({ message: "unauthorized access" });
+      }
+      const token = req.headers.authorization.split(" ")[1];
+
+      jwt.verify(token, process.env.SECRET_TOKEN, (err, decoded) => {
+        if (err) {
+          return res.status(401).send({ message: "unauthorized access" });
+        }
+        req.decoded = decoded;
+        next();
+      });
+    };
+
+    const verifyAdmin = async (req, res, next) => {
+      const email = req.decoded.email;
+      const query = { email: email };
+      const user = await userCollection.findOne(query);
+      const isAdmin = user?.role === "admin";
+      if (!isAdmin) {
+        return res.status(403).send({ message: "forbidden access" });
+      }
+      next();
+    };
+
     // Products related API
 
     app.post("/api/v1/add-product", async (req, res) => {
       const product = req.body;
-      const result = await productCollection.insertOne(product);
-      res.send(result);
+      const { user_email } = req.body;
+      const query = { email: user_email };
+      console.log(query);
+      const user = await userCollection.findOne(query);
+      if (user && user?.membershipStatus === "verified") {
+        const result = await productCollection.insertOne(product);
+        res.send(result);
+      } else {
+        res.send({ message: "Verified users can add more than product" });
+      }
     });
 
     app.get("/api/v1/products", async (req, res) => {
@@ -158,17 +204,22 @@ async function run() {
       res.send(result);
     });
 
-    app.get("/api/v1/users", async (req, res) => {
+    app.get("/api/v1/users", verifyToken, verifyToken, async (req, res) => {
       const result = await userCollection.find().toArray();
       res.send(result);
     });
 
-    app.get("/api/v1/user/:email", async (req, res) => {
-      const { email } = req.params;
-      const query = { email: email };
-      const result = await userCollection.findOne(query);
-      res.send(result);
-    });
+    app.get(
+      "/api/v1/user/:email",
+      verifyToken,
+      verifyToken,
+      async (req, res) => {
+        const { email } = req.params;
+        const query = { email: email };
+        const result = await userCollection.findOne(query);
+        res.send(result);
+      }
+    );
 
     app.patch("/api/v1/make-admin/:id", async (req, res) => {
       const { id } = req.params;
@@ -209,7 +260,7 @@ async function run() {
 
     // admin API
 
-    app.get("/api/v1/user/admin/:email", async (req, res) => {
+    app.get("/api/v1/user/admin/:email", verifyToken, async (req, res) => {
       const { email } = req.params;
       const query = { email: email };
       const user = await userCollection.findOne(query);
