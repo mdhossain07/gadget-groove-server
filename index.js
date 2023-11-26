@@ -1,6 +1,7 @@
 const express = require("express");
 const app = express();
 require("dotenv").config();
+const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
 const jwt = require("jsonwebtoken");
 const cors = require("cors");
 const port = process.env.PORT || 5001;
@@ -162,6 +163,13 @@ async function run() {
       res.send(result);
     });
 
+    app.get("/api/v1/user/:email", async (req, res) => {
+      const { email } = req.params;
+      const query = { email: email };
+      const result = await userCollection.findOne(query);
+      res.send(result);
+    });
+
     app.patch("/api/v1/make-admin/:id", async (req, res) => {
       const { id } = req.params;
       const user = req.body;
@@ -185,6 +193,17 @@ async function run() {
         },
       };
       const result = await userCollection.updateOne(filter, upadteUser);
+      res.send(result);
+    });
+
+    app.patch("/api/v1/membership/:email", async (req, res) => {
+      const { email } = req.params;
+      const user = req.body;
+      const filter = { email: email };
+      const membershipStatus = {
+        $set: { membershipStatus: "verified" },
+      };
+      const result = await userCollection.updateOne(filter, membershipStatus);
       res.send(result);
     });
 
@@ -289,10 +308,25 @@ async function run() {
       res.send(result);
     });
 
-    // await client.db("admin").command({ ping: 1 });
-    // console.log(
-    //   "Pinged your deployment. You successfully connected to MongoDB!"
-    // );
+    // payments related API
+
+    app.post("/api/v1/create-payment-intent", async (req, res) => {
+      const { price } = req.body;
+      const amount = parseInt(price * 100);
+
+      const paymentIntent = await stripe.paymentIntents.create({
+        amount: amount,
+        currency: "usd",
+        payment_method_types: ["card"],
+      });
+
+      res.send({ clientSecret: paymentIntent.client_secret });
+    });
+
+    await client.db("admin").command({ ping: 1 });
+    console.log(
+      "Pinged your deployment. You successfully connected to MongoDB!"
+    );
   } finally {
     // await client.close();
   }
