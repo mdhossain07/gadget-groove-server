@@ -26,6 +26,7 @@ async function run() {
     const userCollection = client.db("gadgetDB").collection("users");
     const reviewCollection = client.db("gadgetDB").collection("reviews");
     const reportCollection = client.db("gadgetDB").collection("reports");
+    const voteCollection = client.db("gadgetDB").collection("votes");
 
     // Products related API
 
@@ -37,6 +38,15 @@ async function run() {
 
     app.get("/api/v1/products", async (req, res) => {
       const result = await productCollection.find().toArray();
+      res.send(result);
+    });
+
+    app.get("/api/v1/user-product", async (req, res) => {
+      let query = {};
+      if (req.query.email) {
+        query = { user_email: req.query.email };
+      }
+      const result = await productCollection.find(query).toArray();
       res.send(result);
     });
 
@@ -242,6 +252,20 @@ async function run() {
         $inc: { vote: -1 },
       };
       const result = await productCollection.updateOne(filter, updateVote);
+      res.send(result);
+    });
+
+    app.post("/api/v1/make-vote", async (req, res) => {
+      const { user, product_id } = req.body;
+      const isVoted = await voteCollection.findOne({ user, product_id });
+      if (isVoted) {
+        return res.send({ message: "User already voted this product" });
+      }
+      const result = await voteCollection.insertOne({
+        user,
+        product_id,
+        voteCount: 1,
+      });
       res.send(result);
     });
 
