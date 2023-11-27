@@ -28,6 +28,7 @@ async function run() {
     const reviewCollection = client.db("gadgetDB").collection("reviews");
     const reportCollection = client.db("gadgetDB").collection("reports");
     const voteCollection = client.db("gadgetDB").collection("votes");
+    const couponCollection = client.db("gadgetDB").collection("coupons");
 
     // jwt related API
 
@@ -152,6 +153,16 @@ async function run() {
       res.send(result);
     });
 
+    app.patch("/api/v1/reject/:id", async (req, res) => {
+      const { id } = req.params;
+      const filter = { _id: new ObjectId(id) };
+      const updateStatus = {
+        $set: { status: "rejected" },
+      };
+      const result = await productCollection.updateOne(filter, updateStatus);
+      res.send(result);
+    });
+
     app.get("/api/v1/featured-products", async (req, res) => {
       let query = {};
       if (req.query.featured) {
@@ -204,22 +215,17 @@ async function run() {
       res.send(result);
     });
 
-    app.get("/api/v1/users", verifyToken, verifyToken, async (req, res) => {
+    app.get("/api/v1/users", verifyToken, verifyAdmin, async (req, res) => {
       const result = await userCollection.find().toArray();
       res.send(result);
     });
 
-    app.get(
-      "/api/v1/user/:email",
-      verifyToken,
-      verifyToken,
-      async (req, res) => {
-        const { email } = req.params;
-        const query = { email: email };
-        const result = await userCollection.findOne(query);
-        res.send(result);
-      }
-    );
+    app.get("/api/v1/user/:email", verifyToken, async (req, res) => {
+      const { email } = req.params;
+      const query = { email: email };
+      const result = await userCollection.findOne(query);
+      res.send(result);
+    });
 
     app.patch("/api/v1/make-admin/:id", async (req, res) => {
       const { id } = req.params;
@@ -374,10 +380,47 @@ async function run() {
       res.send({ clientSecret: paymentIntent.client_secret });
     });
 
-    await client.db("admin").command({ ping: 1 });
-    console.log(
-      "Pinged your deployment. You successfully connected to MongoDB!"
-    );
+    // stats relared API
+
+    app.get("/api/v1/user-stats/:email", async (req, res) => {
+      const { email } = req.params;
+      const query = { user_email: email };
+      const result = await productCollection.find(query).toArray();
+      const pending = await productCollection.countDocuments({
+        user_email: email,
+        status: "pending",
+      });
+      const featured = await productCollection.countDocuments({
+        user_email: email,
+        status: "featured",
+      });
+
+      const accepted = await productCollection.countDocuments({
+        user_email: email,
+        status: "accepted",
+      });
+
+      console.log(pending);
+      res.send({ result, pending, featured, accepted });
+    });
+
+    // coupons related API
+
+    app.post("/api/v1/add-coupon", async (req, res) => {
+      const coupon = req.body;
+      const result = await couponCollection.insertOne(coupon);
+      res.send(result);
+    });
+
+    app.get("/api/v1/coupons", async (req, res) => {
+      const result = await couponCollection.find().toArray();
+      res.send(result);
+    });
+
+    // await client.db("admin").command({ ping: 1 });
+    // console.log(
+    //   "Pinged your deployment. You successfully connected to MongoDB!"
+    // );
   } finally {
     // await client.close();
   }
