@@ -185,11 +185,23 @@ async function run() {
 
     app.get("/api/v1/accepted-products", async (req, res) => {
       let query = {};
-      if (req.query.status) {
-        query = { status: req.query.status };
+      const { page, status } = req.query;
+      if (status === "accepted") {
+        query = { status: status };
       }
-      const result = await productCollection.find(query).toArray();
-      res.send(result);
+      const pageNumber = parseInt(page);
+      const postsPerPage = 10;
+      const skip = pageNumber * postsPerPage;
+
+      const postCount = await productCollection.countDocuments({
+        status: "accepted",
+      });
+      const result = await productCollection
+        .find(query)
+        .skip(skip)
+        .limit(postsPerPage)
+        .toArray();
+      res.send({ result, postCount });
     });
 
     app.get("/api/v1/search-products", async (req, res) => {
@@ -197,7 +209,7 @@ async function run() {
       const query = {
         product_tags: { $in: tags.split(",") },
       };
-      console.log(query);
+
       const result = await productCollection.find(query).toArray();
       res.send(result);
     });
@@ -400,7 +412,6 @@ async function run() {
         status: "accepted",
       });
 
-      console.log(pending);
       res.send({ result, pending, featured, accepted });
     });
 
