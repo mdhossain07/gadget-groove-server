@@ -29,6 +29,7 @@ async function run() {
     const reportCollection = client.db("gadgetDB").collection("reports");
     const voteCollection = client.db("gadgetDB").collection("votes");
     const couponCollection = client.db("gadgetDB").collection("coupons");
+    const messageCollection = client.db("gadgetDB").collection("messages");
 
     // jwt related API
 
@@ -190,7 +191,7 @@ async function run() {
         query = { status: status };
       }
       const pageNumber = parseInt(page);
-      const postsPerPage = 10;
+      const postsPerPage = 20;
       const skip = pageNumber * postsPerPage;
 
       const postCount = await productCollection.countDocuments({
@@ -336,10 +337,10 @@ async function run() {
       const vote = req.body;
       const { id } = req.params;
       const filter = { _id: new ObjectId(id) };
-      const updateVote = {
-        $inc: { vote: -1 },
+      const updateDownVote = {
+        $inc: { downVote: 1 },
       };
-      const result = await productCollection.updateOne(filter, updateVote);
+      const result = await productCollection.updateOne(filter, updateDownVote);
       res.send(result);
     });
 
@@ -412,7 +413,19 @@ async function run() {
         status: "accepted",
       });
 
-      res.send({ result, pending, featured, accepted });
+      const rejected = await productCollection.countDocuments({
+        user_email: email,
+        status: "rejected",
+      });
+
+      res.send({ result, pending, featured, accepted, rejected });
+    });
+
+    app.get("/api/v1/admin-stats/", async (req, res) => {
+      const allUsers = await userCollection.estimatedDocumentCount();
+      const allProducts = await productCollection.estimatedDocumentCount();
+      const allReviews = await reviewCollection.estimatedDocumentCount();
+      res.send({ allUsers, allProducts, allReviews });
     });
 
     // coupons related API
@@ -425,6 +438,14 @@ async function run() {
 
     app.get("/api/v1/coupons", async (req, res) => {
       const result = await couponCollection.find().toArray();
+      res.send(result);
+    });
+
+    // message related API
+
+    app.post("/api/v1/add-message", async (req, res) => {
+      const message = req.body;
+      const result = await messageCollection.insertOne(message);
       res.send(result);
     });
 
